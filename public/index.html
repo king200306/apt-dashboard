@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>APT Finder - 아파트 실거래가 정보 대시보드</title>
+  <meta name="description" content="공공데이터포털 실시간 API를 활용하여 국토교통부 아파트 매매 실거래가 정보를 정밀 분석하고 시각화하는 프리미엄 대시보드입니다.">
+  
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="index.css">
+  
+  <!-- Chart.js for beautiful visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Premium Header -->
+    <header class="main-header" id="dashboardHeader">
+      <div class="logo-area">
+        <span class="logo-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </span>
+        <div class="logo-text">
+          <h1>APT <span>Finder</span></h1>
+          <p class="tagline">국토교통부 실거래가 분석 시스템</p>
+        </div>
+      </div>
+      <div class="header-status">
+        <span class="status-indicator"></span>
+        <span class="status-text">API 실시간 연동 중</span>
+      </div>
+    </header>
+
+    <!-- Filters Panel -->
+    <section class="filters-panel card" id="searchFilters">
+      <h2 class="section-title-hidden">검색 필터</h2>
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label for="sidoSelect">시/도</label>
+          <div class="select-wrapper">
+            <select id="sidoSelect">
+              <option value="">시/도 선택</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="filter-group">
+          <label for="sigunguSelect">시/군/구</label>
+          <div class="select-wrapper">
+            <select id="sigunguSelect" disabled>
+              <option value="">시/군/구 선택</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label for="monthSelect">거래 월</label>
+          <div class="input-wrapper">
+            <input type="month" id="monthSelect">
+          </div>
+        </div>
+
+        <div class="filter-actions">
+          <button id="searchButton" class="btn btn-primary">
+            <span class="btn-text">실거래가 조회</span>
+            <span class="spinner" id="searchSpinner"></span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- No Data / Welcome Screen -->
+    <section class="welcome-screen card" id="welcomeScreen">
+      <div class="welcome-content">
+        <div class="welcome-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.3-4.3"/>
+            <path d="M8 11h6"/>
+            <path d="M11 8v6"/>
+          </svg>
+        </div>
+        <h3>아파트 실거래가 조회 시작</h3>
+        <p>조회하고자 하는 지역과 연월을 선택한 뒤 [실거래가 조회] 버튼을 눌러주세요.<br>실시간 공공데이터를 가져와 미려한 통계 및 차트를 생성합니다.</p>
+        <div class="popular-tags">
+          <span>추천 검색:</span>
+          <button class="tag-btn" data-sido="서울특별시" data-sigungu="11680" data-month="2023-12">서울 강남구 (23.12)</button>
+          <button class="tag-btn" data-sido="서울특별시" data-sigungu="11110" data-month="2023-12">서울 종로구 (23.12)</button>
+          <button class="tag-btn" data-sido="경기도" data-sigungu="41135" data-month="2023-12">성남 분당구 (23.12)</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Kakao Map Panel - Always visible -->
+    <section class="map-section card border-glow-blue" id="mapPanel">
+      <div class="panel-header">
+        <h3>실거래 위치 지도</h3>
+        <p id="mapStatusText">지역과 월을 선택한 후 [실거래가 조회]를 눌러주세요. 목록의 아파트를 클릭하면 지도에 위치가 표시됩니다.</p>
+      </div>
+      <div id="kakaoMap" style="width: 100%; height: 340px; border-radius: 12px; margin-top: 12px; border: 1px solid var(--border-color); overflow: hidden;"></div>
+    </section>
+
+    <!-- Dashboard Content (Hidden by default, shown after loading) -->
+    <main class="dashboard-content" id="dashboardContent" style="display: none;">
+      
+      <!-- Metrics Overview Cards -->
+      <section class="metrics-grid">
+        <h2 class="section-title-hidden">주요 통계</h2>
+        
+        <!-- Card 1: Avg Price -->
+        <div class="metric-card card border-glow-blue" id="metricAvgPrice">
+          <div class="metric-icon bg-blue-trans">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">평균 거래 가격</span>
+            <h3 class="metric-value" id="valAvgPrice">0억 0,000만원</h3>
+            <span class="metric-subtext" id="valAvgPriceSub">전용면적 평균 기준</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Max Price -->
+        <div class="metric-card card border-glow-purple" id="metricMaxPrice">
+          <div class="metric-icon bg-purple-trans">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 11H8a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1Z"/>
+              <path d="M18 11V7a6 6 0 0 0-12 0v4"/>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">최고 거래 가격</span>
+            <h3 class="metric-value" id="valMaxPrice">0억 0,000만원</h3>
+            <span class="metric-subtext" id="valMaxPriceSub">아파트이름 (0㎡, 0층)</span>
+          </div>
+        </div>
+
+        <!-- Card 3: Count -->
+        <div class="metric-card card border-glow-green" id="metricCount">
+          <div class="metric-icon bg-green-trans">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/>
+              <path d="m19 9-5 5-4-4-3 3"/>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">총 거래 건수</span>
+            <h3 class="metric-value" id="valTotalCount">0건</h3>
+            <span class="metric-subtext" id="valTotalCountSub">조회 월내 매매 신고 건</span>
+          </div>
+        </div>
+
+        <!-- Card 4: Unit Price -->
+        <div class="metric-card card border-glow-orange" id="metricUnitPrice">
+          <div class="metric-icon bg-orange-trans">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">평당 평균 거래가</span>
+            <h3 class="metric-value" id="valAvgUnitPrice">0,000만원</h3>
+            <span class="metric-subtext" id="valAvgUnitPriceSub">전용 3.3㎡당 계산</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Dashboard Layout Grid -->
+      <div class="dashboard-grid">
+        
+        <!-- Left Column: Visual Analytics -->
+        <div class="visual-panel card">
+          <div class="panel-header">
+            <h3>거래 정밀 통계 및 분포</h3>
+            <p>수집된 거래 정보를 바탕으로 분석된 실시간 차트입니다.</p>
+          </div>
+          <div class="chart-container">
+            <canvas id="priceDistributionChart"></canvas>
+          </div>
+          <div class="chart-divider"></div>
+          <div class="chart-container">
+            <canvas id="topPriceApartmentsChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Right Column: Detail List & Search -->
+        <div class="details-panel card">
+          <div class="panel-header">
+            <div class="panel-title-area">
+              <h3>실거래 상세 목록</h3>
+              <p>필터링, 아파트명 검색 및 정렬이 가능한 리스트입니다.</p>
+            </div>
+            <div class="panel-actions">
+              <button id="csvExportBtn" class="btn btn-outline btn-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-sm">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span>CSV 내보내기</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Table Search / Filters -->
+          <div class="table-search-bar">
+            <div class="search-input-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.3-4.3"/>
+              </svg>
+              <input type="text" id="tableSearchInput" placeholder="아파트명 또는 법정동(예: 도곡동) 검색...">
+            </div>
+            <div class="size-filter-wrapper">
+              <select id="sizeFilterSelect">
+                <option value="all">전체 평형</option>
+                <option value="small">소형 (전용 59㎡ 이하)</option>
+                <option value="medium">중형 (전용 59㎡~85㎡)</option>
+                <option value="large">대형 (전용 85㎡ 초과)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Table Container -->
+          <div class="table-container">
+            <table id="transactionsTable">
+              <thead>
+                <tr>
+                  <th class="sortable sorted-desc" data-sort="dealDate">거래일 <span class="sort-arrow">↓</span></th>
+                  <th class="sortable" data-sort="umdNm">동 <span class="sort-arrow"></span></th>
+                  <th class="sortable" data-sort="aptNm">아파트 단지명 <span class="sort-arrow"></span></th>
+                  <th class="sortable" data-sort="excluUseAr">전용면적 <span class="sort-arrow"></span></th>
+                  <th class="sortable" data-sort="dealAmount">거래금액 <span class="sort-arrow"></span></th>
+                  <th class="sortable" data-sort="floor">층 <span class="sort-arrow"></span></th>
+                  <th class="sortable" data-sort="buildYear">건축 <span class="sort-arrow"></span></th>
+                </tr>
+              </thead>
+              <tbody id="transactionsTableBody">
+                <!-- Table rows populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Table Pagination Status -->
+          <div class="table-footer">
+            <span id="tableCountText">총 0개 중 0개 표시</span>
+            <div class="pagination-controls" id="paginationControls">
+              <!-- Dynamically populated buttons -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+
+    <!-- Custom Footer -->
+    <footer class="app-footer">
+      <p>&copy; 2026 APT Finder. 국토교통부 아파트실거래자료 API 연동 서비스.</p>
+    </footer>
+
+  </div>
+
+  <!-- JS Logic -->
+  <script src="index.js"></script>
+</body>
+</html>
