@@ -1,0 +1,19 @@
+{
+  "name": "apt-transaction-dashboard",
+  "version": "1.0.0",
+  "description": "Apartment actual transaction price visualization dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "fast-xml-parser": "^4.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "private": true
+}
