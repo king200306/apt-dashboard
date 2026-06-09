@@ -22,17 +22,25 @@ if (fs.existsSync(envPath)) {
     let currentSection = '';
     
     for (const line of lines) {
-      if (line === 'APT' || line === 'apt') {
-        currentSection = 'APT';
-      } else if (line === 'kakao' || line === 'KAKAO') {
-        currentSection = 'KAKAO';
-      } else if (line.includes('Key') || line.includes('key')) {
-        const parts = line.split('=');
-        if (parts.length > 1) {
-          const val = parts[1].trim().replace(/^["']|["']$/g, ''); // strip quotes
-          if (currentSection === 'APT') {
-            apiKey = val;
-          } else if (currentSection === 'KAKAO') {
+      if (!line) continue;
+      // If the line is a section header (does not contain '=')
+      if (!line.includes('=')) {
+        currentSection = line.toUpperCase();
+        continue;
+      }
+      
+      const parts = line.split('=');
+      if (parts.length > 1) {
+        const keyName = parts[0].trim().toLowerCase();
+        const val = parts[1].trim().replace(/^["']|["']$/g, ''); // strip quotes
+        
+        if (currentSection === 'APT' && keyName.includes('key')) {
+          apiKey = val;
+        } else if (currentSection === 'KAKAO') {
+          // Prefer JS key for client-side Kakao Map loading
+          if (keyName.includes('js') && keyName.includes('key')) {
+            kakaoMapKey = val;
+          } else if (keyName.includes('key') && !kakaoMapKey) {
             kakaoMapKey = val;
           }
         }
