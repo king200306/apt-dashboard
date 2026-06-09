@@ -152,10 +152,14 @@ app.get('/api/map-key', (req, res) => {
   res.json({ kakaoKey: kakaoMapKey });
 });
 
-// Run server
-app.listen(PORT, () => {
-  console.log(`====================================================`);
-  console.log(`  Apartment Actual Transaction Dashboard Server      `);
-  console.log(`  Running on http://localhost:${PORT}                `);
-  console.log(`====================================================`);
-});
+// Run server locally if run directly
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`====================================================`);
+    console.log(`  Apartment Actual Transaction Dashboard Server      `);
+    console.log(`  Running on http://localhost:${PORT}                `);
+    console.log(`====================================================`);
+  });
+}
+
+module.exports = app;
